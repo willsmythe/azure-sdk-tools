@@ -21,7 +21,7 @@ jobs:
         inputs:
           version: '$(DotNetCoreVersion)'
 
-      - script: 'dotnet pack $(ProjectFile) -o $(Build.ArtifactStagingDirectory) -warnaserror $(VersioningProps)'
+      - script: 'dotnet pack $(ProjectFile) -o $(Build.ArtifactStagingDirectory) -warnaserror $(VersioningProps) /p:SignAssembly=true'
         displayName: 'Build and Package'
         env:
           DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
