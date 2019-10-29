@@ -19,8 +19,6 @@ steps:
         import fnmatch
         from io import open
 
-        logging.info(os.getcwd())
-
         # This script is intended to be run against a single folder. All readme.md files (regardless of casing) will have the relative links
         # updated with appropriate full reference links. This is a recursive update..
 
@@ -154,6 +152,7 @@ steps:
 
             args = parser.parse_args()
 
+            logging.info(os.getcwd())
             logging.info("Real Root Folder: {}".format("${{ parameters.TargetFolder }})"))
             logging.info("Real Target Folder: {}".format("${{ parameters.RootFolder }})"))
             logging.info("Root Folder: {}".format(str(args.root_folder)))
