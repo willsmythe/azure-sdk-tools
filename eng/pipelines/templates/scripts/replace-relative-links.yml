@@ -152,6 +152,9 @@ steps:
 
             args = parser.parse_args()
 
+            logging.info("Real Root Folder: {}".format(${{ parameters.TargetFolder }}))
+            logging.info("Real Target Folder: {}".format(${{ parameters.RootFolder }}))
+
             logging.info("Root Folder: {}".format(args.root_folder))
             logging.info("Target Folder: {}".format(args.target_folder))
             logging.info("Repository Id: {}".format(args.repo_id))
