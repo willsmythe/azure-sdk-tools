@@ -143,12 +143,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    logging.info("Root Folder: {}".format(args.root_folder))
-    logging.info("Target Folder: {}".format(args.target_folder))
-    logging.info("Repository Id: {}".format(args.repo_id))
-    logging.info("Build SHA: {}".format(args.build_sha))
 
-    readme_files = locate_readmes(args.target_folder)
+    logging.info("Root Folder: {}".format(str(args.root_folder)))
+    logging.info("Target Folder: {}".format(str(args.target_folder)))
+    logging.info("Repository Id: {}".format(str(args.repo_id)))
+    logging.info("Build SHA: {}".format(str(args.build_sha)))
+
+    readme_files = locate_readmes(str(args.target_folder))
 
     for readme_location in readme_files:
         try:
@@ -160,9 +161,9 @@ if __name__ == "__main__":
                 readme_content = readme_stream.read()
 
             new_content = transfer_content_to_absolute_references(
-                args.root_folder,
-                args.build_sha,
-                args.repo_id,
+                str(args.root_folder),
+                str(args.build_sha),
+                str(args.repo_id),
                 readme_location,
                 readme_content,
             )
