@@ -143,8 +143,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    logging.info("Real Root Folder: {}".format("${{ parameters.TargetFolder }})")
-    logging.info("Real Target Folder: {}".format("${{ parameters.RootFolder }})")
+    logging.info("Real Root Folder: {}".format("${{ parameters.TargetFolder }})"))
+    logging.info("Real Target Folder: {}".format("${{ parameters.RootFolder }})"))
     logging.info("Root Folder: {}".format(str(args.root_folder)))
     logging.info("Target Folder: {}".format(str(args.target_folder)))
     logging.info("Repository Id: {}".format(str(args.repo_id)))
