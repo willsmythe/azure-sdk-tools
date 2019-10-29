@@ -123,7 +123,7 @@ steps:
                 "--target",
                 dest="target_folder",
                 help="The target folder that contains a README ",
-                default="${{ parameters.TargetFolder }}",
+                default=r"${{ parameters.TargetFolder }}",
             )
 
             parser.add_argument(
@@ -131,7 +131,7 @@ steps:
                 "--repoid",
                 dest="repo_id",
                 help='The target repository used as the base for the path replacement. Full Id, example: "Azure/azure-sdk-for-net"',
-                default="${{ parameters.RepoId }}",
+                default=r"${{ parameters.RepoId }}",
             )
 
             parser.add_argument(
@@ -139,7 +139,7 @@ steps:
                 "--root",
                 dest="root_folder",
                 help="The root directory of the repository. This gives us the ability to rationalize links in situations where a relative link traverses UPWARDS from the readme.",
-                default="${{ parameters.RootFolder }}",
+                default=r"${{ parameters.RootFolder }}",
             )
 
             parser.add_argument(
@@ -147,7 +147,7 @@ steps:
                 "--sha",
                 dest="build_sha",
                 help="The commit hash associated with this change. Using this will mean that links will never be broken.",
-                default="${{ parameters.BuildSHA }}",
+                default=r"${{ parameters.BuildSHA }}",
             )
 
             args = parser.parse_args()
