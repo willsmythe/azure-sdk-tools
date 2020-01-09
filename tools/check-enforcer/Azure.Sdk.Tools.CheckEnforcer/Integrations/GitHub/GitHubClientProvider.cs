@@ -14,6 +14,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 
 namespace Azure.Sdk.Tools.CheckEnforcer
 {
@@ -28,6 +29,41 @@ namespace Azure.Sdk.Tools.CheckEnforcer
 
         private Tuple<DateTimeOffset, string> cachedApplicationToken;
 
+        private static RSA FromXmlString(string xmlString)
+        {
+            RSAParameters parameters = new RSAParameters();
+
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(xmlString);
+
+            if (xmlDoc.DocumentElement.Name.Equals("RSAKeyValue"))
+            {
+                foreach (XmlNode node in xmlDoc.DocumentElement.ChildNodes)
+                {
+                    switch (node.Name)
+                    {
+                        case "Modulus": parameters.Modulus = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "Exponent": parameters.Exponent = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "P": parameters.P = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "Q": parameters.Q = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "DP": parameters.DP = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "DQ": parameters.DQ = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "InverseQ": parameters.InverseQ = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                        case "D": parameters.D = (string.IsNullOrEmpty(node.InnerText) ? null : Convert.FromBase64String(node.InnerText)); break;
+                    }
+                }
+            }
+            else
+            {
+                throw new Exception("Invalid XML RSA key.");
+            }
+
+            var rsa = new RSACryptoServiceProvider();
+            rsa.ImportParameters(parameters);
+
+            return rsa;
+        }
+
         private async Task<string> GetTokenAsync(CancellationToken cancellationToken)
         {
             if (cachedApplicationToken == null || cachedApplicationToken.Item1 < DateTimeOffset.UtcNow)
@@ -40,15 +76,30 @@ namespace Azure.Sdk.Tools.CheckEnforcer
                 //       Cache stampeed will be visible in the KeyVault diagostics because
                 //       we'll see a spike in get and sign requests. Stampeed duration will
                 //       be limited in duration.
-                var headerAndPayloadString = GenerateJwtTokenHeaderAndPayload();
-                var digest = ComputeHeaderAndPayloadDigest(headerAndPayloadString);
-                var encodedSignature = await SignHeaderAndPayloadDigestWithGitHubApplicationKey(digest, cancellationToken);
-                var token = AppendSignatureToHeaderAndPayload(headerAndPayloadString, encodedSignature);
+                //var headerAndPayloadString = GenerateJwtTokenHeaderAndPayload();
+                //var digest = ComputeHeaderAndPayloadDigest(headerAndPayloadString);
+                //var encodedSignature = await SignHeaderAndPayloadDigestWithGitHubApplicationKey(digest, cancellationToken);
+                //var token = AppendSignatureToHeaderAndPayload(headerAndPayloadString, encodedSignature);
+
+                string appId = globalConfigurationProvider.GetApplicationID();
+                string privateKeyXml = globalConfigurationProvider.GetGitHubAppPrivateKey(); // actually the key
+                               
+                var rsa = FromXmlString(privateKeyXml);
+                var key = new RsaSecurityKey(rsa);
+                DateTime expiration = DateTime.Now.AddMinutes(1);
+
+                // Create token using the JwtSecurityTokenHandler
+                JwtSecurityTokenHandler handler = new JwtSecurityTokenHandler();
+                var token = handler.CreateJwtSecurityToken(appId, null, null, null, expiration,
+                    DateTime.Now, new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
+    
+                var stringToken = token.RawData;
 
                 // Let's get a token a full minute before it times out.
                 cachedApplicationToken = new Tuple<DateTimeOffset, string>(
-                    DateTimeOffset.UtcNow.AddMinutes(Constants.ApplicationTokenLifetimeInMinutes - 1),
-                    token
+                    expiration,
+                    //DateTimeOffset.UtcNow.AddMinutes(Constants.ApplicationTokenLifetimeInMinutes - 1),
+                    stringToken
                     );
             }
 
@@ -60,29 +111,29 @@ namespace Azure.Sdk.Tools.CheckEnforcer
             return $"{headerAndPayloadString}.{encodedSignature}";
         }
 
-        private async Task<string> SignHeaderAndPayloadDigestWithGitHubApplicationKey(byte[] digest, CancellationToken cancellationToken)
-        {
-            var cryptographyClient = await GetCryptographyClient(cancellationToken);
-            var signResult = await cryptographyClient.SignAsync(
-                SignatureAlgorithm.RS256,
-                digest,
-                cancellationToken
-                );
+        // private async Task<string> SignHeaderAndPayloadDigestWithGitHubApplicationKey(byte[] digest, CancellationToken cancellationToken)
+        // {
+        //     var cryptographyClient = await GetCryptographyClient(cancellationToken);
+        //     var signResult = await cryptographyClient.SignAsync(
+        //         SignatureAlgorithm.RS256,
+        //         digest,
+        //         cancellationToken
+        //         );
 
-            var encodedSignature = Base64UrlEncoder.Encode(signResult.Signature);
-            return encodedSignature;
-        }
+        //     var encodedSignature = Base64UrlEncoder.Encode(signResult.Signature);
+        //     return encodedSignature;
+        // }
 
-        private byte[] ComputeHeaderAndPayloadDigest(string headerAndPayloadString)
-        {
-            var headerAndPayloadBytes = Encoding.UTF8.GetBytes(headerAndPayloadString);
+        // private byte[] ComputeHeaderAndPayloadDigest(string headerAndPayloadString)
+        // {
+        //     var headerAndPayloadBytes = Encoding.UTF8.GetBytes(headerAndPayloadString);
 
-            var sha256 = new SHA256CryptoServiceProvider();
-            var digest = sha256.ComputeHash(headerAndPayloadBytes);
-            return digest;
-        }
+        //     var sha256 = new SHA256CryptoServiceProvider();
+        //     var digest = sha256.ComputeHash(headerAndPayloadBytes);
+        //     return digest;
+        // }
 
-        private string GenerateJwtTokenHeaderAndPayload()
+        /*private string GenerateJwtTokenHeaderAndPayload()
         {
             var jwtHeader = new JwtHeader();
             jwtHeader["alg"] = "RS256";
@@ -99,51 +150,51 @@ namespace Azure.Sdk.Tools.CheckEnforcer
             var jwtToken = new JwtSecurityToken(jwtHeader, jwtPayload);
             var headerAndPayloadString = $"{jwtToken.EncodedHeader}.{jwtToken.EncodedPayload}";
             return headerAndPayloadString;
-        }
+        }*/
 
-        private async Task<CryptographyClient> GetCryptographyClient(CancellationToken cancellationToken)
-        {
-            // Using DefaultAzureCredential to support local development. If developing
-            // locally you'll need to register an AAD application and set the following
-            // variables:
-            //
-            //      AZURE_TENANT_ID (the ID of the AAD tenant)
-            //      AZURE_CLIENT_ID (the iD of the AAD application you registered)
-            //      AZURE_CLIENT_SECRET (the secret for the AAD application you registered)
-            //
-            // You can get these values when you configure the application. Set them in
-            // the Debug section of the project properties. Once this is done you will need
-            // to create a KeyVault instance and then register a GitHub application and upload
-            // the private key into the vault. The AAD application that you just created needs
-            // to have Get and Sign rights - so set an access policy up which grants the app
-            // those rights.
-            //
-            var credential = new DefaultAzureCredential();
+        // private async Task<CryptographyClient> GetCryptographyClient(CancellationToken cancellationToken)
+        // {
+        //     // Using DefaultAzureCredential to support local development. If developing
+        //     // locally you'll need to register an AAD application and set the following
+        //     // variables:
+        //     //
+        //     //      AZURE_TENANT_ID (the ID of the AAD tenant)
+        //     //      AZURE_CLIENT_ID (the iD of the AAD application you registered)
+        //     //      AZURE_CLIENT_SECRET (the secret for the AAD application you registered)
+        //     //
+        //     // You can get these values when you configure the application. Set them in
+        //     // the Debug section of the project properties. Once this is done you will need
+        //     // to create a KeyVault instance and then register a GitHub application and upload
+        //     // the private key into the vault. The AAD application that you just created needs
+        //     // to have Get and Sign rights - so set an access policy up which grants the app
+        //     // those rights.
+        //     //
+        //     var credential = new DefaultAzureCredential();
 
-            var keyClient = GetKeyClient(credential);
-            var key = await GetKey(keyClient, cancellationToken);
+        //     var keyClient = GetKeyClient(credential);
+        //     var key = await GetKey(keyClient, cancellationToken);
 
-            var cryptographyClient = new CryptographyClient(key.Id, credential);
-            return cryptographyClient;
-        }
+        //     var cryptographyClient = new CryptographyClient(key.Id, credential);
+        //     return cryptographyClient;
+        // }
 
-        private async Task<Key> GetKey(KeyClient keyClient, CancellationToken cancellationToken)
-        {
-            var keyResponse = await keyClient.GetKeyAsync(
-                globalConfigurationProvider.GetGitHubAppPrivateKeyName(),
-                cancellationToken: cancellationToken
-                );
+        // private async Task<Key> GetKey(KeyClient keyClient, CancellationToken cancellationToken)
+        // {
+        //     var keyResponse = await keyClient.GetKeyAsync(
+        //         globalConfigurationProvider.GetGitHubAppPrivateKeyName(),
+        //         cancellationToken: cancellationToken
+        //         );
 
-            var key = keyResponse.Value;
-            return key;
-        }
+        //     var key = keyResponse.Value;
+        //     return key;
+        // }
 
-        private KeyClient GetKeyClient(TokenCredential credential)
+        /*private KeyClient GetKeyClient(TokenCredential credential)
         {
             var keyVaultUri = new Uri(globalConfigurationProvider.GetKeyVaultUri());
             var keyClient = new KeyClient(keyVaultUri, credential);
             return keyClient;
-        }
+        }*/
 
         public async Task<GitHubClient> GetApplicationClientAsync(CancellationToken cancellationToken)
         {

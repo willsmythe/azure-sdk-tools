@@ -27,10 +27,11 @@ namespace Azure.Sdk.Tools.CheckEnforcer.Locking
                 {
                     if (client == null)
                     {
-                        var uri = new Uri(globalConfigurationProvider.GetDistributedLockStorageUri());
-                        var credential = new DefaultAzureCredential();
-                        client = new BlobServiceClient(uri, credential);
+                        //var uri = new Uri(globalConfigurationProvider.GetDistributedLockStorageUri());
+                        //var credential = new DefaultAzureCredential();
+                        //client = new BlobServiceClient(uri, credential);
 
+                        client = new BlobServiceClient(globalConfigurationProvider.GetDistributedLockStorageUri()); // actually a connection string
                     }
                 }
             }

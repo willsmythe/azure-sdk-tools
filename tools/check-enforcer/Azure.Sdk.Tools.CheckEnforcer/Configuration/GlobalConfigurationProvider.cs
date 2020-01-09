@@ -25,9 +25,9 @@ namespace Azure.Sdk.Tools.CheckEnforcer
             return keyVaultUri;
         }
 
-        public string GetGitHubAppPrivateKeyName()
+        public string GetGitHubAppPrivateKey()
         {
-            var gitHubAppPrivateKeyName = Environment.GetEnvironmentVariable("KEYVAULT_GITHUBAPP_KEY_NAME");
+            var gitHubAppPrivateKeyName = Environment.GetEnvironmentVariable("GITHUBAPP_PRIVATE_KEY");
             return gitHubAppPrivateKeyName;
         }
 

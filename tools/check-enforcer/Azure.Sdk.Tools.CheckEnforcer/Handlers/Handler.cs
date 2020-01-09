@@ -1,4 +1,4 @@
-﻿using Azure.Sdk.Tools.CheckEnforcer.Configuration;
+using Azure.Sdk.Tools.CheckEnforcer.Configuration;
 using Azure.Sdk.Tools.CheckEnforcer.Integrations.GitHub;
 using Azure.Sdk.Tools.CheckEnforcer.Locking;
 using Microsoft.Extensions.Logging;
@@ -112,7 +112,15 @@ namespace Azure.Sdk.Tools.CheckEnforcer.Handlers
             var runs = runsResponse.CheckRuns;
 
             // NOTE: If this blows up it means that we didn't receive the check_suite request.
-            var checkEnforcerRun = await CreateCheckAsync(client, repositoryId, sha, false, cancellationToken);
+            //var checkEnforcerRun = await CreateCheckAsync(client, repositoryId, sha, false, cancellationToken);
+
+            var checkEnforcerRun = runs.FirstOrDefault(r => r.Name == this.GlobalConfigurationProvider.GetApplicationName());
+
+            if (checkEnforcerRun == null)
+            {
+                 Logger.LogInformation("Evaluate PR: no check-enforcer run yet");
+                 return;
+            }
 
             var otherRuns = from run in runs
                             where run.Name != this.GlobalConfigurationProvider.GetApplicationName()
@@ -126,6 +134,8 @@ namespace Azure.Sdk.Tools.CheckEnforcer.Handlers
 
             var totalOutstandingOtherRuns = outstandingOtherRuns.Count();
 
+            Logger.LogInformation("Evaluate PR: total runs: {totalOtherRuns}; outstanding: {totalOutstandingOtherRuns}", totalOtherRuns, totalOutstandingOtherRuns);
+
             if (totalOtherRuns >= configuration.MinimumCheckRuns && totalOutstandingOtherRuns == 0 && checkEnforcerRun.Conclusion != new StringEnum<CheckConclusion>(CheckConclusion.Success))
             {
                 Logger.LogTrace("Updating check-run.");
@@ -137,6 +147,7 @@ namespace Azure.Sdk.Tools.CheckEnforcer.Handlers
                 });
                 Logger.LogTrace("Updated check-run.");
             }
+            // TODO: correct logic here?
             else if (totalOtherRuns < configuration.MinimumCheckRuns || totalOutstandingOtherRuns != 0 && checkEnforcerRun.Status != new StringEnum<CheckStatus>(CheckStatus.InProgress))
             {
                 // NOTE: We do this when we need to go back from a conclusion of success to a status of in-progress.

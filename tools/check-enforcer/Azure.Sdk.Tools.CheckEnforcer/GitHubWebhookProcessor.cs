@@ -48,26 +48,28 @@ namespace Azure.Sdk.Tools.CheckEnforcer
 
         private DateTimeOffset gitHubAppWebhookSecretExpiry = DateTimeOffset.MinValue;
         private string gitHubAppWebhookSecret;
-        private SecretClient secretClient;
+        //private SecretClient secretClient;
 
         private async Task<string> GetGitHubAppWebhookSecretAsync(CancellationToken cancellationToken)
         {
             if (gitHubAppWebhookSecretExpiry < DateTimeOffset.UtcNow)
             {
-                var gitHubAppWebhookSecretName = globalConfigurationProvider.GetGitHubAppWebhookSecretName();
+                /*var gitHubAppWebhookSecretName = globalConfigurationProvider.GetGitHubAppWebhookSecretName();
+
 
                 var client = GetSecretClient();
                 var response = await client.GetAsync(gitHubAppWebhookSecretName, cancellationToken: cancellationToken);
-                var secret = response.Value;
+                var secret = response.Value;*/
 
+                gitHubAppWebhookSecret = globalConfigurationProvider.GetGitHubAppWebhookSecretName(); // actually the secret
                 gitHubAppWebhookSecretExpiry = DateTimeOffset.UtcNow.AddSeconds(30);
-                gitHubAppWebhookSecret = secret.Value;
+                //gitHubAppWebhookSecret = secret.Value;
             }
 
             return gitHubAppWebhookSecret;
         }
 
-        private SecretClient GetSecretClient()
+        /*private SecretClient GetSecretClient()
         {
             var keyVaultUri = globalConfigurationProvider.GetKeyVaultUri();
             var credential = new DefaultAzureCredential();
@@ -78,7 +80,7 @@ namespace Azure.Sdk.Tools.CheckEnforcer
             }
 
             return secretClient;
-        }
+        }*/
 
         private async Task<string> ReadAndVerifyBodyAsync(HttpRequest request, CancellationToken cancellationToken)
         {
